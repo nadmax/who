@@ -146,7 +146,7 @@ mod tests {
 
     #[test]
     fn test_token_decode_expired() {
-        let exp = jsonwebtoken::get_current_timestamp() as usize - 3600; // 1 hour in the past
+        let exp = jsonwebtoken::get_current_timestamp() as usize - 3600;
         let token = generate_token("123", "admin", exp);
 
         let result = decode::<Claims>(

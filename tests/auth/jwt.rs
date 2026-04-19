@@ -87,7 +87,7 @@ async fn test_me_expired_token() {
     let claims = Claims {
         sub: "123".to_string(),
         role: "admin".to_string(),
-        exp: 0, // already expired
+        exp: 0,
     };
 
     let token = encode(
@@ -105,4 +105,3 @@ async fn test_me_expired_token() {
 
     response.assert_status_unauthorized();
 }
-
