@@ -8,6 +8,7 @@ use jsonwebtoken::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use utoipa::ToSchema;
 
 const JWT_SECRET: &str = "changeme";
 
@@ -18,7 +19,7 @@ pub struct Claims {
     pub exp: usize,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 struct LoginRequest {
     user_id: String,
     role: String,
@@ -30,6 +31,14 @@ pub fn router() -> Router {
         .route("/jwt/me", get(me))
 }
 
+#[utoipa::path(
+    post,
+    path = "/auth/jwt/login",
+    responses(
+        (status = 200, description = "Login successful"),
+        (status = 401, description = "Unauthorized"),
+    )
+)]
 async fn login(
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
@@ -56,6 +65,14 @@ async fn login(
     Ok(Json(json!({ "token": token })))
 }
 
+#[utoipa::path(
+    get,
+    path = "/auth/jwt/me",
+    responses(
+        (status = 200, description = "Current user"),
+        (status = 401, description = "Unauthorized"),
+    )
+)]
 async fn me(headers: HeaderMap) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let token = extract_bearer_token(&headers).ok_or_else(|| {
         (
