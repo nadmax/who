@@ -3,8 +3,22 @@ name = "who"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "who"
+path = "src/main.rs"
+
+[lib]
+name = "who"
+path = "src/lib.rs"
+
 [dependencies]
 axum = "0.8.9"
+jsonwebtoken = { version = "10.3.0", default-features = false, features = [
+    "rust_crypto",
+] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 tokio = { version = "1.52.1", features = ["full"] }
+
+[dev-dependencies]
+axum-test = "20.0.0"
