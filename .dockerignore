@@ -1,0 +1,13 @@
+# .dockerignore - exclude build artifacts and unnecessary files
+target
+.git
+.gitignore
+*.md
+.env
+.env.*
+*compose*.yml
+Dockerfile*
+.dockerignore
+.vscode
+.idea
+LICENSE

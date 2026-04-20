@@ -24,3 +24,14 @@ utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
 
 [dev-dependencies]
 axum-test = "20.0.0"
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+strip = true
+opt-level = "s"
+overflow-checks = false
+lto = true
+codegen-units = 1
+panic = "abort"
