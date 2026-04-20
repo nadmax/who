@@ -3,4 +3,38 @@ services:
     container_name: who_api
     build: .
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    cap_add: []
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined
+    read_only: true
+    tmpfs:
+      - /tmp:size=10m,noexec,nosuid
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M
+        reservations:
+          cpus: "0.25"
+          memory: 64M
+    user: "1000:1000"
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    environment:
+      - RUST_LOG=info
+
+networks:
+  internal:
+    driver: bridge
+    internal: false
