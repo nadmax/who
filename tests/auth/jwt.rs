@@ -4,7 +4,7 @@ use who::routes;
 
 fn test_server() -> TestServer {
     let app = routes::auth_router();
-    TestServer::new(app).unwrap()
+    TestServer::new(app)
 }
 
 #[tokio::test]
