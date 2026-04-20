@@ -1,6 +1,5 @@
-FROM rust:1.95-alpine AS chef
-RUN apk add --no-cache musl-dev pkgconfig curl && \
-    cargo install cargo-chef --locked
+FROM lukemathwalker/cargo-chef:latest-rust-alpine AS chef
+RUN apk add --no-cache musl-dev pkgconfig curl
 WORKDIR /app
 
 FROM chef AS planner
@@ -11,7 +10,7 @@ FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY ./ ./
-RUN cargo build --release
+RUN cargo build --release --bin who
 
 FROM alpine:3.23 AS runtime
 RUN apk add --no-cache ca-certificates
