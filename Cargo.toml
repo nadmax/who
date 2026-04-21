@@ -2,6 +2,8 @@
 name = "who"
 version = "0.1.0"
 edition = "2024"
+description = "A Rust Authentication built with Axum"
+license = "MIT"
 
 [[bin]]
 name = "who"
@@ -30,8 +32,8 @@ opt-level = 1
 
 [profile.release]
 strip = true
-opt-level = "s"
+opt-level = "z"
 overflow-checks = false
-lto = true
+lto = "fat"
 codegen-units = 1
 panic = "abort"
