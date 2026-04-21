@@ -1,1 +1,15 @@
-# Who
+<p align="center">
+    <img alt="Who" src=".github/workflows/logo.png">
+    <br><br>
+    A Rust authentication API built with Axum<br/>
+    <em>API • Authentication • Built in Rust</em>
+</p>
+
+<p align="center">
+  <a href="https://github.com/nadmax/who/actions">
+    <img alt="CI" src="https://img.shields.io/github/actions/workflow/status/nadmax/who/ci.yaml?label=CI&logo=github"/>
+  </a>
+  <a href="https://opensource.org/licenses/MIT">
+    <img alt="License" src="https://img.shields.io/github/license/nadmax/who"/>
+  </a>
+</p>
