@@ -2,7 +2,6 @@
     <img alt="Who" src=".github/images/logo.png" width="600">
     <br><br>
     A Rust authentication API built with Axum<br/>
-    <em>API • Authentication • Built in Rust</em>
 </p>
 
 <p align="center">
