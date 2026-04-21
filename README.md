@@ -1,7 +1,6 @@
 <p align="center">
-    <img alt="Who" src=".github/images/logo.png" width="600">
-    <br><br>
-    A Rust authentication API built with Axum<br/>
+  <strong>Who</strong><br/>
+  <sub>A Rust authentication API built with Axum</sub>
 </p>
 
 <p align="center">
