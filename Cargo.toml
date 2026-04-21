@@ -2,6 +2,8 @@
 name = "who"
 version = "0.1.0"
 edition = "2024"
+description = "A Rust Authentication built with Axum"
+license = "MIT"
 
 [[bin]]
 name = "who"
@@ -24,3 +26,14 @@ utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
 
 [dev-dependencies]
 axum-test = "20.0.0"
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+strip = true
+opt-level = "z"
+overflow-checks = false
+lto = "fat"
+codegen-units = 1
+panic = "abort"
