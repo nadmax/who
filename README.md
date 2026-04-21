@@ -1,5 +1,5 @@
 <p align="center">
-    <img alt="Who" src=".github/workflows/logo.png">
+    <img alt="Who" src=".github/images/logo.png" width="600">
     <br><br>
     A Rust authentication API built with Axum<br/>
     <em>API • Authentication • Built in Rust</em>
