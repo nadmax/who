@@ -19,7 +19,7 @@ jobs:
       - name: Build API
         run: cargo build
 
-  tests:
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
