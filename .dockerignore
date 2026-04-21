@@ -1,4 +1,3 @@
-# .dockerignore - exclude build artifacts and unnecessary files
 target
 .git
 .gitignore
