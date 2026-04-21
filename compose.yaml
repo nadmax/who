@@ -1,16 +1,15 @@
 services:
   api:
-    container_name: who_api
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "127.0.0.1:8080:8080"
     restart: unless-stopped
     cap_drop:
       - ALL
-    cap_add: []
     security_opt:
       - no-new-privileges:true
-      - seccomp:unconfined
     read_only: true
     tmpfs:
       - /tmp:size=10m,noexec,nosuid
@@ -22,9 +21,9 @@ services:
         reservations:
           cpus: "0.25"
           memory: 64M
-    user: "1000:1000"
+    user: "10001:10001"
     networks:
-      - internal
+      - backend
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
       interval: 30s
@@ -32,9 +31,8 @@ services:
       retries: 3
       start_period: 10s
     environment:
-      - RUST_LOG=info
+      RUST_LOG: "info"
 
 networks:
-  internal:
+  backend:
     driver: bridge
-    internal: false

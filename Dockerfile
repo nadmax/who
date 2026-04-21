@@ -1,4 +1,4 @@
-FROM lukemathwalker/cargo-chef:latest-rust-alpine AS chef
+FROM lukemathwalker/cargo-chef:0.1.77-rust-alpine3.23 AS chef
 RUN apk add --no-cache musl-dev pkgconfig curl
 WORKDIR /app
 
@@ -8,13 +8,14 @@ RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
-RUN cargo chef cook --release --recipe-path recipe.json
+RUN cargo chef cook --release --locked --recipe-path recipe.json
 COPY ./ ./
-RUN cargo build --release --bin who
+RUN cargo build --release --locked --bin who
 
 FROM alpine:3.23 AS runtime
-RUN apk add --no-cache ca-certificates
-RUN addgroup -S app && adduser -S app -G app
+RUN apk add --no-cache ca-certificates && \
+    addgroup -S app && \
+    adduser -S app -G app
 WORKDIR /app
 COPY --from=builder /app/target/release/who ./
 USER app
