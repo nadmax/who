@@ -16,10 +16,20 @@ jobs:
         with:
           rust-version: "1.95"
 
+      - name: Cache cargo artifacts
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Build API
         run: cargo build
 
   test:
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -29,6 +39,15 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           rust-version: "1.95"
+
+      - name: Restore cargo cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run tests
         run: cargo test
