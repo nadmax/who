@@ -1,7 +1,5 @@
-<p align="center">
-  <strong>Who</strong><br/>
-  <sub>A Rust authentication API built with Axum</sub>
-</p>
+<h1 align="center">who</h1>
+<p align="center">A Rust authentication API built with Axum</p>
 
 <p align="center">
   <a href="https://github.com/nadmax/who/actions">
