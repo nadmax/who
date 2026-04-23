@@ -1,5 +1,6 @@
 pub mod models;
 pub mod routes;
+pub mod services;
 
 use axum::Router;
 

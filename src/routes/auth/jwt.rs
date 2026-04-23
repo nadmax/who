@@ -1,23 +1,8 @@
-use axum::{
-    Json, Router,
-    http::{HeaderMap, StatusCode},
-    routing::{get, post},
-};
-use jsonwebtoken::{
-    Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode, get_current_timestamp,
-};
-use serde::{Deserialize, Serialize};
+use axum::{Json, Router, http::{HeaderMap, StatusCode}, routing::{get, post}};
+use serde::Deserialize;
 use serde_json::{Value, json};
 use utoipa::ToSchema;
-
-const JWT_SECRET: &str = "changeme";
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Claims {
-    pub sub: String,
-    pub role: String,
-    pub exp: usize,
-}
+use crate::services::auth::jwt as jwt_service;
 
 #[derive(Debug, Deserialize, ToSchema)]
 struct LoginRequest {
@@ -39,29 +24,12 @@ pub fn router() -> Router {
         (status = 401, description = "Unauthorized"),
     )
 )]
-async fn login(
-    Json(payload): Json<LoginRequest>,
-) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let expiry = get_current_timestamp() as usize + 3600;
-
-    let claims = Claims {
-        sub: payload.user_id,
-        role: payload.role,
-        exp: expiry,
-    };
-
-    let token = encode(
-        &Header::new(Algorithm::HS256),
-        &claims,
-        &EncodingKey::from_secret(JWT_SECRET.as_bytes()),
-    )
-    .map_err(|e| {
-        (
+async fn login(Json(payload): Json<LoginRequest>) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let token = jwt_service::create_token(&payload.user_id, &payload.role)
+        .map_err(|e| (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({ "error": format!("Failed to generate token: {}", e) })),
-        )
-    })?;
-
+        ))?;
     Ok(Json(json!({ "token": token })))
 }
 
@@ -74,133 +42,159 @@ async fn login(
     )
 )]
 async fn me(headers: HeaderMap) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let token = extract_bearer_token(&headers).ok_or_else(|| {
-        (
-            StatusCode::UNAUTHORIZED,
-            Json(json!({ "error": "Missing or invalid Authorization header" })),
-        )
-    })?;
+    let token = jwt_service::extract_bearer_token(&headers).ok_or_else(|| (
+        StatusCode::UNAUTHORIZED,
+        Json(json!({ "error": "Missing or invalid Authorization header" })),
+    ))?;
 
-    let token_data = decode::<Claims>(
-        &token,
-        &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
-        &Validation::new(Algorithm::HS256),
-    )
-    .map_err(|e| {
-        (
+    let claims = jwt_service::decode_token(&token)
+        .map_err(|e| (
             StatusCode::UNAUTHORIZED,
             Json(json!({ "error": format!("Invalid token: {}", e) })),
-        )
-    })?;
+        ))?;
 
-    Ok(Json(json!({
-        "user_id": token_data.claims.sub,
-        "role": token_data.claims.role,
-    })))
-}
-
-fn extract_bearer_token(headers: &HeaderMap) -> Option<String> {
-    let auth_header = headers.get("Authorization")?.to_str().ok()?;
-    auth_header.strip_prefix("Bearer ").map(|t| t.to_string())
+    Ok(Json(jwt_service::claims_to_json(&claims)))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
+    use axum::{
+        body::Body,
+        http::{Request, StatusCode, header},
+        Router,
+    };
+    use tower::ServiceExt;
 
-    fn generate_token(user_id: &str, role: &str, exp: usize) -> String {
-        let claims = Claims {
-            sub: user_id.to_string(),
-            role: role.to_string(),
-            exp,
-        };
-        encode(
-            &Header::new(Algorithm::HS256),
-            &claims,
-            &EncodingKey::from_secret(JWT_SECRET.as_bytes()),
-        )
-        .unwrap()
+    fn app() -> Router {
+        router()
     }
 
-    #[test]
-    fn test_token_generation() {
-        let exp = jsonwebtoken::get_current_timestamp() as usize + 3600;
-        let token = generate_token("123", "admin", exp);
-        assert!(!token.is_empty());
+    #[tokio::test]
+    async fn test_login_returns_token() {
+        let response = app()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/jwt/login")
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(r#"{"user_id":"123","role":"admin"}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert!(json["token"].as_str().is_some_and(|t| !t.is_empty()));
     }
 
-    #[test]
-    fn test_token_decode_valid() {
-        let exp = jsonwebtoken::get_current_timestamp() as usize + 3600;
-        let token = generate_token("123", "admin", exp);
+    #[tokio::test]
+    async fn test_login_missing_fields_returns_422() {
+        let response = app()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/jwt/login")
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(r#"{"user_id":"123"}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
 
-        let result = decode::<Claims>(
-            &token,
-            &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
-            &Validation::new(Algorithm::HS256),
-        );
-
-        assert!(result.is_ok());
-        let claims = result.unwrap().claims;
-        assert_eq!(claims.sub, "123");
-        assert_eq!(claims.role, "admin");
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 
-    #[test]
-    fn test_token_decode_invalid_signature() {
-        let exp = jsonwebtoken::get_current_timestamp() as usize + 3600;
-        let token = generate_token("123", "admin", exp);
+    #[tokio::test]
+    async fn test_me_with_valid_token() {
+        // First get a token
+        let login_response = app()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/jwt/login")
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(r#"{"user_id":"123","role":"admin"}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
 
-        let result = decode::<Claims>(
-            &token,
-            &DecodingKey::from_secret(b"wrongsecret"),
-            &Validation::new(Algorithm::HS256),
-        );
+        let body = axum::body::to_bytes(login_response.into_body(), usize::MAX).await.unwrap();
+        let login_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let token = login_json["token"].as_str().unwrap();
 
-        assert!(result.is_err());
+        // Then use it
+        let response = app()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/jwt/me")
+                    .header(header::AUTHORIZATION, format!("Bearer {token}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["user_id"], "123");
+        assert_eq!(json["role"], "admin");
     }
 
-    #[test]
-    fn test_token_decode_expired() {
-        let exp = jsonwebtoken::get_current_timestamp() as usize - 3600;
-        let token = generate_token("123", "admin", exp);
+    #[tokio::test]
+    async fn test_me_without_token_returns_401() {
+        let response = app()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/jwt/me")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
 
-        let result = decode::<Claims>(
-            &token,
-            &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
-            &Validation::new(Algorithm::HS256),
-        );
-
-        assert!(result.is_err());
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
 
-    #[test]
-    fn test_extract_bearer_token_valid() {
-        let mut headers = axum::http::HeaderMap::new();
-        headers.insert(
-            axum::http::header::AUTHORIZATION,
-            "Bearer mytoken123".parse().unwrap(),
-        );
-        assert_eq!(
-            extract_bearer_token(&headers),
-            Some("mytoken123".to_string())
-        );
+    #[tokio::test]
+    async fn test_me_with_invalid_token_returns_401() {
+        let response = app()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/jwt/me")
+                    .header(header::AUTHORIZATION, "Bearer not.a.valid.token")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
 
-    #[test]
-    fn test_extract_bearer_token_missing() {
-        let headers = axum::http::HeaderMap::new();
-        assert_eq!(extract_bearer_token(&headers), None);
-    }
+    #[tokio::test]
+    async fn test_me_with_malformed_auth_header_returns_401() {
+        let response = app()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/jwt/me")
+                    .header(header::AUTHORIZATION, "Basic somebase64==")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
 
-    #[test]
-    fn test_extract_bearer_token_invalid_format() {
-        let mut headers = axum::http::HeaderMap::new();
-        headers.insert(
-            axum::http::header::AUTHORIZATION,
-            "Basic mytoken123".parse().unwrap(),
-        );
-        assert_eq!(extract_bearer_token(&headers), None);
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
 }
