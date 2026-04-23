@@ -26,6 +26,7 @@ utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
 
 [dev-dependencies]
 axum-test = "20.0.0"
+tower = "0.5.3"
 
 [profile.dev]
 opt-level = 1
