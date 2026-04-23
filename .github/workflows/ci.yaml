@@ -26,6 +26,31 @@ jobs:
       - name: Build API
         run: cargo build
 
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+
+      - name: Install cargo-vet
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-vet
+
+      - name: Audit dependencies for vulnerabilities
+        run: cargo audit --ignore RUSTSEC-2023-0071 # Waiting for rsa@0.10.0 crate
+
+      - name: Verify dependency supply chain
+        run: cargo vet
+
   test:
     needs: build
     runs-on: ubuntu-latest
