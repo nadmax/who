@@ -1,9 +1,9 @@
+use crate::config::Config;
+
 use axum::http::HeaderMap;
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode, get_current_timestamp};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-
-const JWT_SECRET: &str = "changeme";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
@@ -13,22 +13,24 @@ pub struct Claims {
 }
 
 pub fn create_token(user_id: &str, role: &str) -> Result<String, jsonwebtoken::errors::Error> {
-    let exp = get_current_timestamp() as usize + 3600;
+    let config = Config::load();
+    let exp = get_current_timestamp() as usize + config.jwt_expiry_secs as usize;
     let claims = Claims { sub: user_id.to_string(), role: role.to_string(), exp };
     encode(
         &Header::new(Algorithm::HS256),
         &claims,
-        &EncodingKey::from_secret(JWT_SECRET.as_bytes()),
+        &EncodingKey::from_secret(config.jwt_secret.as_bytes()),
     )
 }
 
 pub fn decode_token(token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
-    let token_data = decode::<Claims>(
+    let config = Config::load();
+    decode::<Claims>(
         token,
-        &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
+        &DecodingKey::from_secret(config.jwt_secret.as_bytes()),
         &Validation::new(Algorithm::HS256),
-    )?;
-    Ok(token_data.claims)
+    )
+    .map(|data| data.claims)
 }
 
 pub fn extract_bearer_token(headers: &HeaderMap) -> Option<String> {
