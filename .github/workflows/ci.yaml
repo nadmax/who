@@ -54,6 +54,10 @@ jobs:
   test:
     needs: build
     runs-on: ubuntu-latest
+    env:
+      JWT_SECRET: test-secret
+      JWT_EXPIRY_SECS: 3600
+      PORT: 8080
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
